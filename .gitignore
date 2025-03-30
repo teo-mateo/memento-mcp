@@ -99,7 +99,7 @@ coverage/
 neo4j-data/
 neo4j-import/
 neo4j-logs/
-memory-mcp.code-workspace
+memento-mcp.code-workspace
 copilot-instructions.md
 .github/copilot-instructions.md
 .specstory/

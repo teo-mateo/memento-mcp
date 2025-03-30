@@ -20,7 +20,7 @@ export class DefaultEmbeddingService extends EmbeddingService {
    */
   constructor(
     config: EmbeddingServiceConfig | number = 1536, // Default to OpenAI's dimensions for better test compatibility
-    modelName = 'memory-mcp-mock',
+    modelName = 'memento-mcp-mock',
     modelVersion = '1.0.0'
   ) {
     super();

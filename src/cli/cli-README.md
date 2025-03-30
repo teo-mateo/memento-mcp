@@ -103,7 +103,7 @@ Or directly in the Claude Desktop configuration:
     "memento": {
       "command": "/path/to/node",
       "args": [
-        "/path/to/memory-mcp/dist/index.js"
+        "/path/to/memento-mcp/dist/index.js"
       ],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",

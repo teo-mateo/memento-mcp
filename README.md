@@ -441,7 +441,7 @@ Add this to your `claude_desktop_config.json`:
     "memento": {
       "command": "/path/to/node",
       "args": [
-        "/path/to/memory-mcp/dist/index.js"
+        "/path/to/memento-mcp/dist/index.js"
       ],
       "env": {
         "MEMORY_STORAGE_TYPE": "neo4j",
@@ -542,8 +542,8 @@ npm run neo4j:init
 
 ```bash
 # Clone the repository
-git clone https://github.com/gannonh/memory-mcp.git
-cd memory-mcp
+git clone https://github.com/gannonh/memento-mcp.git
+cd memento-mcp
 
 # Install dependencies
 npm install

@@ -2,7 +2,7 @@
 .specstory/cursor_rules_backups/*
 
 # Memory MCP specific
-# Add specific patterns for memory-mcp project if needed
+# Add specific patterns for memento-mcp project if needed
 
 neo4j-data/
 neo4j-import/
