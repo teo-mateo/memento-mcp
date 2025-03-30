@@ -1,0 +1,11 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "memory mcp",
+            "database": "${workspaceFolder:memory-mcp}/data/memory.sqlite"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}
