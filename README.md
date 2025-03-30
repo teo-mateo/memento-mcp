@@ -4,6 +4,8 @@
 
 Scalable, high performance knowledge graph memory system with semantic search, temporal awareness, and advanced relation management. Provides any LLM client that supports the model context protocol (e.g., Claude Desktop, Cursor, Github Copilot) with persistent ontological memory.
 
+[![Memento MCP Tests](https://github.com/gannonh/memento-mcp/actions/workflows/memento-mcp.yml/badge.svg)](https://github.com/gannonh/memento-mcp/actions/workflows/memento-mcp.yml)
+
 ## Core Concepts
 
 ### Entities
