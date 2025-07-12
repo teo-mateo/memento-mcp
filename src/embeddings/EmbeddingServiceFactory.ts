@@ -1,6 +1,7 @@
 import type { EmbeddingService } from './EmbeddingService.js';
 import { DefaultEmbeddingService } from './DefaultEmbeddingService.js';
 import { OpenAIEmbeddingService } from './OpenAIEmbeddingService.js';
+import { AzureEmbeddingService } from './AzureEmbeddingService.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -11,6 +12,9 @@ export interface EmbeddingServiceConfig {
   model?: string;
   dimensions?: number;
   apiKey?: string;
+  endpoint?: string;
+  deployment?: string;
+  apiVersion?: string;
   [key: string]: unknown;
 }
 
@@ -102,6 +106,9 @@ export class EmbeddingServiceFactory {
 
     logger.debug('EmbeddingServiceFactory: Creating service from environment variables', {
       mockEmbeddings: useMockEmbeddings,
+      azureKeyPresent: !!process.env.AZURE_OPENAI_API_KEY,
+      azureEndpointPresent: !!process.env.AZURE_OPENAI_ENDPOINT,
+      azureDeploymentPresent: !!process.env.AZURE_OPENAI_DEPLOYMENT,
       openaiKeyPresent: !!process.env.OPENAI_API_KEY,
       embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'default',
     });
@@ -111,6 +118,41 @@ export class EmbeddingServiceFactory {
       return new DefaultEmbeddingService();
     }
 
+    // Check for Azure OpenAI configuration first
+    const azureApiKey = process.env.AZURE_OPENAI_API_KEY;
+    const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+    const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT;
+    const azureApiVersion = process.env.AZURE_OPENAI_API_VERSION;
+    const azureModel = process.env.AZURE_OPENAI_MODEL || 'text-embedding-ada-002';
+
+    if (azureApiKey && azureEndpoint && azureDeployment) {
+      try {
+        logger.debug('EmbeddingServiceFactory: Creating Azure OpenAI embedding service', {
+          endpoint: azureEndpoint,
+          deployment: azureDeployment,
+          apiVersion: azureApiVersion,
+          model: azureModel,
+        });
+        const service = new AzureEmbeddingService({
+          apiKey: azureApiKey,
+          endpoint: azureEndpoint,
+          deployment: azureDeployment,
+          apiVersion: azureApiVersion,
+          model: azureModel,
+        });
+        logger.info('EmbeddingServiceFactory: Azure OpenAI embedding service created successfully', {
+          model: service.getModelInfo().name,
+          dimensions: service.getModelInfo().dimensions,
+        });
+        return service;
+      } catch (error) {
+        logger.error('EmbeddingServiceFactory: Failed to create Azure OpenAI service', error);
+        logger.info('EmbeddingServiceFactory: Falling back to check other providers');
+        // Continue to check other providers
+      }
+    }
+
+    // Check for OpenAI configuration
     const openaiApiKey = process.env.OPENAI_API_KEY;
     const embeddingModel = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
 
@@ -136,9 +178,9 @@ export class EmbeddingServiceFactory {
       }
     }
 
-    // No OpenAI API key, using default embedding service
+    // No API keys found, using default embedding service
     logger.info(
-      'EmbeddingServiceFactory: No OpenAI API key found, using default embedding service'
+      'EmbeddingServiceFactory: No API keys found, using default embedding service'
     );
     return new DefaultEmbeddingService();
   }
@@ -158,6 +200,35 @@ export class EmbeddingServiceFactory {
   ): EmbeddingService {
     return new OpenAIEmbeddingService({
       apiKey,
+      model,
+      dimensions,
+    });
+  }
+
+  /**
+   * Create an Azure OpenAI embedding service
+   *
+   * @param apiKey - Azure OpenAI API key
+   * @param endpoint - Azure OpenAI endpoint
+   * @param deployment - Azure OpenAI deployment name
+   * @param apiVersion - Optional API version
+   * @param model - Optional model name
+   * @param dimensions - Optional embedding dimensions
+   * @returns Azure OpenAI embedding service
+   */
+  static createAzureService(
+    apiKey: string,
+    endpoint: string,
+    deployment: string,
+    apiVersion?: string,
+    model?: string,
+    dimensions?: number
+  ): EmbeddingService {
+    return new AzureEmbeddingService({
+      apiKey,
+      endpoint,
+      deployment,
+      apiVersion,
       model,
       dimensions,
     });
@@ -186,6 +257,29 @@ EmbeddingServiceFactory.registerProvider('openai', (config = {}) => {
 
   return new OpenAIEmbeddingService({
     apiKey: config.apiKey,
+    model: config.model,
+    dimensions: config.dimensions,
+  });
+});
+
+EmbeddingServiceFactory.registerProvider('azure', (config = {}) => {
+  if (!config.apiKey) {
+    throw new Error('API key is required for Azure OpenAI embedding service');
+  }
+
+  if (!config.endpoint) {
+    throw new Error('Endpoint is required for Azure OpenAI embedding service');
+  }
+
+  if (!config.deployment) {
+    throw new Error('Deployment name is required for Azure OpenAI embedding service');
+  }
+
+  return new AzureEmbeddingService({
+    apiKey: config.apiKey,
+    endpoint: config.endpoint,
+    deployment: config.deployment,
+    apiVersion: config.apiVersion,
     model: config.model,
     dimensions: config.dimensions,
   });
