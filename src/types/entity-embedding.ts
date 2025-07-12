@@ -1,3 +1,5 @@
+import type { QueryPreprocessorOptions } from '../embeddings/QueryPreprocessor.js';
+
 /**
  * Interface representing a vector embedding for semantic search
  */
@@ -107,6 +109,26 @@ export interface SemanticSearchOptions {
    * Use search result caching
    */
   useCache?: boolean;
+
+  /**
+   * Query preprocessing options for multi-term queries
+   */
+  queryPreprocessing?: QueryPreprocessorOptions;
+
+  /**
+   * Enable adaptive thresholds based on query complexity
+   */
+  enableAdaptiveThresholds?: boolean;
+
+  /**
+   * Enable query decomposition for compound concepts
+   */
+  enableQueryDecomposition?: boolean;
+
+  /**
+   * Enable enhanced fallback with query-specific patterns
+   */
+  enableEnhancedFallback?: boolean;
 }
 
 /**

@@ -182,10 +182,13 @@ export class EmbeddingServiceFactory {
           model: azureModel,
           apiVersion: azureApiVersion,
         });
-        logger.info('EmbeddingServiceFactory: Azure OpenAI embedding service created successfully', {
-          model: service.getModelInfo().name,
-          dimensions: service.getModelInfo().dimensions,
-        });
+        logger.info(
+          'EmbeddingServiceFactory: Azure OpenAI embedding service created successfully',
+          {
+            model: service.getModelInfo().name,
+            dimensions: service.getModelInfo().dimensions,
+          }
+        );
         return service;
       } catch (error) {
         logger.error('EmbeddingServiceFactory: Failed to create Azure OpenAI service', error);
@@ -221,9 +224,7 @@ export class EmbeddingServiceFactory {
     }
 
     // No API keys found, using default embedding service
-    logger.info(
-      'EmbeddingServiceFactory: No API keys found, using default embedding service'
-    );
+    logger.info('EmbeddingServiceFactory: No API keys found, using default embedding service');
     return new DefaultEmbeddingService();
   }
 

@@ -11,6 +11,7 @@ import neo4j from 'neo4j-driver';
 import { Neo4jVectorStore } from './Neo4jVectorStore.js';
 import { EmbeddingServiceFactory } from '../../embeddings/EmbeddingServiceFactory.js';
 import type { EmbeddingService } from '../../embeddings/EmbeddingService.js';
+import { QueryPreprocessor } from '../../embeddings/QueryPreprocessor.js';
 
 /**
  * Configuration options for Neo4j storage provider
@@ -1852,7 +1853,7 @@ export class Neo4jStorageProvider implements StorageProvider {
   }
 
   /**
-   * Search for entities using semantic search
+   * Search for entities using semantic search with enhanced multi-term support
    * @param query The search query text
    * @param options Search options including semantic search parameters
    */
@@ -1868,6 +1869,53 @@ export class Neo4jStorageProvider implements StorageProvider {
         startTime: Date.now(),
         stepsTaken: [],
       };
+
+      // Check if query preprocessing is enabled via environment variable
+      const queryPreprocessingEnabled = process.env.ENABLE_QUERY_PREPROCESSING === 'true';
+      let processedQuery = query;
+      let adaptiveMinSimilarity = options.minSimilarity || 0.6;
+
+      if (queryPreprocessingEnabled) {
+        logger.debug('Neo4jStorageProvider: Query preprocessing is enabled');
+
+        // Initialize query preprocessor with options from search options
+        const preprocessor = new QueryPreprocessor(options.queryPreprocessing);
+        const analysis = preprocessor.analyze(query);
+
+        diagnostics.queryAnalysis = {
+          originalQuery: analysis.originalQuery,
+          normalizedQuery: analysis.normalizedQuery,
+          complexity: analysis.complexity,
+          termCount: analysis.terms.length,
+          recommendedThreshold: analysis.recommendedThreshold,
+          useMultiVector: analysis.useMultiVector,
+        };
+
+        // Use adaptive threshold if enabled
+        if (options.enableAdaptiveThresholds !== false) {
+          adaptiveMinSimilarity = analysis.recommendedThreshold;
+          logger.debug(
+            `Neo4jStorageProvider: Using adaptive threshold ${adaptiveMinSimilarity} for complexity ${analysis.complexity}`
+          );
+        }
+
+        // Use normalized query
+        processedQuery = analysis.normalizedQuery;
+
+        diagnostics.stepsTaken.push({
+          step: 'queryPreprocessing',
+          timestamp: Date.now(),
+          enabled: true,
+          adaptiveThreshold: adaptiveMinSimilarity,
+          queryComplexity: analysis.complexity,
+        });
+      } else {
+        diagnostics.stepsTaken.push({
+          step: 'queryPreprocessing',
+          timestamp: Date.now(),
+          enabled: false,
+        });
+      }
 
       // Log start of semantic search
       diagnostics.stepsTaken.push({
@@ -1954,7 +2002,7 @@ export class Neo4jStorageProvider implements StorageProvider {
             status: 'started',
           });
 
-          options.queryVector = await this.embeddingService.generateEmbedding(query);
+          options.queryVector = await this.embeddingService.generateEmbedding(processedQuery);
 
           diagnostics.stepsTaken.push({
             step: 'generateQueryEmbedding',
@@ -1988,7 +2036,7 @@ export class Neo4jStorageProvider implements StorageProvider {
         });
 
         const searchLimit = Math.floor(options.limit || 10);
-        const minSimilarity = options.minSimilarity || 0.6;
+        const minSimilarity = adaptiveMinSimilarity;
 
         diagnostics.stepsTaken.push({
           step: 'vectorSearch',
@@ -2209,7 +2257,10 @@ export class Neo4jStorageProvider implements StorageProvider {
         limit: textSearchLimit,
       });
 
-      const textResults = await this.searchNodes(query, { ...options, limit: textSearchLimit });
+      const textResults = await this.searchNodes(processedQuery, {
+        ...options,
+        limit: textSearchLimit,
+      });
 
       diagnostics.stepsTaken.push({
         step: 'textSearch',

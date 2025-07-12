@@ -26,7 +26,6 @@ export interface AzureEmbeddingConfig {
    */
   apiVersion?: string;
 
-
   /**
    * Optional dimensions override
    */
@@ -98,7 +97,7 @@ export class AzureEmbeddingService extends EmbeddingService {
     this.model = config.model;
     this.dimensions = config.dimensions || 1536;
     this.version = config.version || '1.0.0';
-    
+
     // Construct the full API endpoint
     this.apiEndpoint = `${this.endpoint}/openai/deployments/${this.model}/embeddings?api-version=${this.apiVersion}`;
   }
