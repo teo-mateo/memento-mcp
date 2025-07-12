@@ -22,12 +22,12 @@ if (useMockEmbeddings) {
 // Check for Azure API key availability
 const hasAzureApiKey = process.env.AZURE_OPENAI_API_KEY !== undefined;
 const hasAzureEndpoint = process.env.AZURE_OPENAI_ENDPOINT !== undefined;
-const hasAzureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT !== undefined;
-const hasAzureConfig = hasAzureApiKey && hasAzureEndpoint && hasAzureDeployment;
+const hasAzureModel = process.env.AZURE_OPENAI_MODEL !== undefined;
+const hasAzureConfig = hasAzureApiKey && hasAzureEndpoint && hasAzureModel;
 
 console.log(`Azure OpenAI API key ${hasAzureApiKey ? 'is' : 'is not'} available`);
 console.log(`Azure OpenAI endpoint ${hasAzureEndpoint ? 'is' : 'is not'} available`);
-console.log(`Azure OpenAI deployment ${hasAzureDeployment ? 'is' : 'is not'} available`);
+console.log(`Azure OpenAI model ${hasAzureModel ? 'is' : 'is not'} available`);
 
 // Only run real API tests if we have complete Azure config AND we're not in mock mode
 const shouldRunTests = hasAzureConfig && !useMockEmbeddings;
@@ -50,9 +50,8 @@ describe('AzureEmbeddingService', () => {
       return new AzureEmbeddingService({
         apiKey: config?.apiKey || process.env.AZURE_OPENAI_API_KEY!,
         endpoint: config?.endpoint || process.env.AZURE_OPENAI_ENDPOINT!,
-        deployment: config?.deployment || process.env.AZURE_OPENAI_DEPLOYMENT!,
+        model: config?.model || process.env.AZURE_OPENAI_MODEL!,
         apiVersion: config?.apiVersion || process.env.AZURE_OPENAI_API_VERSION,
-        model: config?.model,
         dimensions: config?.dimensions,
       });
     });
@@ -73,7 +72,7 @@ describe('AzureEmbeddingService', () => {
       new AzureEmbeddingService({
         apiKey: '',
         endpoint: 'https://test.openai.azure.com',
-        deployment: 'test-deployment',
+        model: 'text-embedding-ada-002',
       });
     }).toThrow('API key is required for Azure OpenAI embedding service');
   });
@@ -83,19 +82,19 @@ describe('AzureEmbeddingService', () => {
       new AzureEmbeddingService({
         apiKey: 'test-key',
         endpoint: '',
-        deployment: 'test-deployment',
+        model: 'text-embedding-ada-002',
       });
     }).toThrow('Endpoint is required for Azure OpenAI embedding service');
   });
 
-  it('should throw error when deployment is missing', () => {
+  it('should throw error when model is missing', () => {
     expect(() => {
       new AzureEmbeddingService({
         apiKey: 'test-key',
         endpoint: 'https://test.openai.azure.com',
-        deployment: '',
+        model: '',
       });
-    }).toThrow('Deployment name is required for Azure OpenAI embedding service');
+    }).toThrow('Model name is required for Azure OpenAI embedding service');
   });
 
   conditionalTest('should create service instance directly', () => {
@@ -108,9 +107,8 @@ describe('AzureEmbeddingService', () => {
     const service = new AzureEmbeddingService({
       apiKey: process.env.AZURE_OPENAI_API_KEY!,
       endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
-      deployment: process.env.AZURE_OPENAI_DEPLOYMENT!,
-      apiVersion: process.env.AZURE_OPENAI_API_VERSION,
       model: 'text-embedding-ada-002',
+      apiVersion: process.env.AZURE_OPENAI_API_VERSION,
     });
 
     expect(service).toBeInstanceOf(AzureEmbeddingService);
@@ -127,7 +125,7 @@ describe('AzureEmbeddingService', () => {
       provider: 'azure',
       apiKey: process.env.AZURE_OPENAI_API_KEY!,
       endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
-      deployment: process.env.AZURE_OPENAI_DEPLOYMENT!,
+      model: process.env.AZURE_OPENAI_MODEL!,
     });
 
     expect(service).toBeInstanceOf(AzureEmbeddingService);
@@ -143,7 +141,6 @@ describe('AzureEmbeddingService', () => {
     const service = new AzureEmbeddingService({
       apiKey: process.env.AZURE_OPENAI_API_KEY!,
       endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
-      deployment: process.env.AZURE_OPENAI_DEPLOYMENT!,
       model: 'text-embedding-ada-002',
     });
 
@@ -163,7 +160,6 @@ describe('AzureEmbeddingService', () => {
     const service = new AzureEmbeddingService({
       apiKey: process.env.AZURE_OPENAI_API_KEY!,
       endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
-      deployment: process.env.AZURE_OPENAI_DEPLOYMENT!,
       model: 'text-embedding-ada-002',
     });
 
@@ -183,7 +179,6 @@ describe('AzureEmbeddingService', () => {
     const service = new AzureEmbeddingService({
       apiKey: process.env.AZURE_OPENAI_API_KEY!,
       endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
-      deployment: process.env.AZURE_OPENAI_DEPLOYMENT!,
       model: 'text-embedding-ada-002',
     });
 
@@ -208,7 +203,6 @@ describe('AzureEmbeddingService', () => {
     const service = new AzureEmbeddingService({
       apiKey: process.env.AZURE_OPENAI_API_KEY!,
       endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
-      deployment: process.env.AZURE_OPENAI_DEPLOYMENT!,
       model: 'text-embedding-ada-002',
     });
 
@@ -240,7 +234,6 @@ describe('AzureEmbeddingService', () => {
     const service = new AzureEmbeddingService({
       apiKey: 'invalid-key',
       endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
-      deployment: process.env.AZURE_OPENAI_DEPLOYMENT!,
       model: 'text-embedding-ada-002',
     });
 
@@ -265,7 +258,7 @@ describe('AzureEmbeddingService', () => {
 
     // Access private field for testing (using type assertion)
     const apiEndpoint = (service as any).apiEndpoint;
-    expect(apiEndpoint).toBe('https://test.openai.azure.com/openai/deployments/test-deployment/embeddings?api-version=2023-05-15');
+    expect(apiEndpoint).toBe('https://test.openai.azure.com/openai/deployments/text-embedding-ada-002/embeddings?api-version=2023-05-15');
   });
 
   conditionalTest('should handle endpoint with trailing slash', () => {
@@ -285,6 +278,6 @@ describe('AzureEmbeddingService', () => {
 
     // Access private field for testing (using type assertion)
     const apiEndpoint = (service as any).apiEndpoint;
-    expect(apiEndpoint).toBe('https://test.openai.azure.com/openai/deployments/test-deployment/embeddings?api-version=2023-05-15');
+    expect(apiEndpoint).toBe('https://test.openai.azure.com/openai/deployments/text-embedding-ada-002/embeddings?api-version=2023-05-15');
   });
 });

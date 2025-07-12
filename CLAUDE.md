@@ -48,6 +48,7 @@ Factory pattern with multiple providers:
 - **EmbeddingServiceFactory**: Provider registry and environment-based selection
 - **OpenAIEmbeddingService**: Production-ready OpenAI API integration
 - **AzureEmbeddingService**: Azure OpenAI Service integration with deployment support
+- **OllamaEmbeddingService**: Local embedding generation via Ollama
 - **DefaultEmbeddingService**: Mock service for testing with random vectors
 - **Rate Limiting**: Configurable API limits with automatic throttling
 
@@ -169,13 +170,15 @@ Comprehensive configuration through environment variables:
 - `NEO4J_SIMILARITY_FUNCTION`: Similarity function (cosine/euclidean)
 
 #### Embedding Service
+- `EMBEDDING_PROVIDER`: Select embedding provider (azure|openai|ollama) - auto-detects if not specified
 - `OPENAI_API_KEY`: OpenAI API key for embeddings
 - `OPENAI_EMBEDDING_MODEL`: Model selection (default: text-embedding-3-small)
 - `AZURE_OPENAI_API_KEY`: Azure OpenAI API key (preferred if provided)
 - `AZURE_OPENAI_ENDPOINT`: Azure OpenAI endpoint URL
-- `AZURE_OPENAI_DEPLOYMENT`: Azure OpenAI deployment name
+- `AZURE_OPENAI_MODEL`: Azure OpenAI model/deployment name (required)
 - `AZURE_OPENAI_API_VERSION`: Azure API version (default: 2023-05-15)
-- `AZURE_OPENAI_MODEL`: Azure model name (default: text-embedding-ada-002)
+- `OLLAMA_HOST`: Ollama server URL (default: http://localhost:11434)
+- `OLLAMA_MODEL`: Ollama model name (default: nomic-embed-text)
 - `MOCK_EMBEDDINGS`: Use mock embeddings for testing
 - `EMBEDDING_RATE_LIMIT_TOKENS`: Rate limiting configuration
 - `EMBEDDING_RATE_LIMIT_INTERVAL`: Rate limiting interval

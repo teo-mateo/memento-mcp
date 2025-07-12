@@ -17,19 +17,15 @@ export interface AzureEmbeddingConfig {
   endpoint: string;
 
   /**
-   * Azure OpenAI deployment name
+   * Azure OpenAI model/deployment name
    */
-  deployment: string;
+  model: string;
 
   /**
    * Azure OpenAI API version (e.g., 2023-05-15)
    */
   apiVersion?: string;
 
-  /**
-   * Optional model name for metadata
-   */
-  model?: string;
 
   /**
    * Optional dimensions override
@@ -65,7 +61,6 @@ interface AzureEmbeddingResponse {
 export class AzureEmbeddingService extends EmbeddingService {
   private apiKey: string;
   private endpoint: string;
-  private deployment: string;
   private apiVersion: string;
   private model: string;
   private dimensions: number;
@@ -93,20 +88,19 @@ export class AzureEmbeddingService extends EmbeddingService {
       throw new Error('Endpoint is required for Azure OpenAI embedding service');
     }
 
-    if (!config.deployment) {
-      throw new Error('Deployment name is required for Azure OpenAI embedding service');
+    if (!config.model) {
+      throw new Error('Model name is required for Azure OpenAI embedding service');
     }
 
     this.apiKey = config.apiKey;
     this.endpoint = config.endpoint.replace(/\/$/, ''); // Remove trailing slash
-    this.deployment = config.deployment;
     this.apiVersion = config.apiVersion || '2023-05-15';
-    this.model = config.model || 'text-embedding-ada-002';
+    this.model = config.model;
     this.dimensions = config.dimensions || 1536;
     this.version = config.version || '1.0.0';
     
     // Construct the full API endpoint
-    this.apiEndpoint = `${this.endpoint}/openai/deployments/${this.deployment}/embeddings?api-version=${this.apiVersion}`;
+    this.apiEndpoint = `${this.endpoint}/openai/deployments/${this.model}/embeddings?api-version=${this.apiVersion}`;
   }
 
   /**
@@ -118,7 +112,7 @@ export class AzureEmbeddingService extends EmbeddingService {
   override async generateEmbedding(text: string): Promise<number[]> {
     logger.debug('Generating embedding with Azure OpenAI', {
       text: text.substring(0, 50) + '...',
-      deployment: this.deployment,
+      model: this.model,
       apiVersion: this.apiVersion,
       endpoint: this.endpoint,
     });

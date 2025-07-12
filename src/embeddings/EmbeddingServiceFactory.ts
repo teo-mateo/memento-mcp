@@ -2,6 +2,7 @@ import type { EmbeddingService } from './EmbeddingService.js';
 import { DefaultEmbeddingService } from './DefaultEmbeddingService.js';
 import { OpenAIEmbeddingService } from './OpenAIEmbeddingService.js';
 import { AzureEmbeddingService } from './AzureEmbeddingService.js';
+import { OllamaEmbeddingService } from './OllamaEmbeddingService.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -13,8 +14,9 @@ export interface EmbeddingServiceConfig {
   dimensions?: number;
   apiKey?: string;
   endpoint?: string;
-  deployment?: string;
   apiVersion?: string;
+  host?: string;
+  version?: string;
   [key: string]: unknown;
 }
 
@@ -103,14 +105,15 @@ export class EmbeddingServiceFactory {
   static createFromEnvironment(): EmbeddingService {
     // Check if we should use mock embeddings (for testing)
     const useMockEmbeddings = process.env.MOCK_EMBEDDINGS === 'true';
+    const embeddingProvider = process.env.EMBEDDING_PROVIDER?.toLowerCase();
 
     logger.debug('EmbeddingServiceFactory: Creating service from environment variables', {
       mockEmbeddings: useMockEmbeddings,
+      embeddingProvider: embeddingProvider || 'auto',
       azureKeyPresent: !!process.env.AZURE_OPENAI_API_KEY,
       azureEndpointPresent: !!process.env.AZURE_OPENAI_ENDPOINT,
-      azureDeploymentPresent: !!process.env.AZURE_OPENAI_DEPLOYMENT,
       openaiKeyPresent: !!process.env.OPENAI_API_KEY,
-      embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'default',
+      embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || process.env.OLLAMA_MODEL || 'default',
     });
 
     if (useMockEmbeddings) {
@@ -118,27 +121,66 @@ export class EmbeddingServiceFactory {
       return new DefaultEmbeddingService();
     }
 
+    // Check if a specific provider is requested
+    if (embeddingProvider === 'ollama') {
+      try {
+        logger.debug('EmbeddingServiceFactory: Creating Ollama embedding service');
+        const service = new OllamaEmbeddingService();
+        logger.info('EmbeddingServiceFactory: Ollama embedding service created successfully', {
+          model: service.getModelInfo().name,
+          dimensions: service.getModelInfo().dimensions,
+        });
+        return service;
+      } catch (error) {
+        logger.error('EmbeddingServiceFactory: Failed to create Ollama service', error);
+        logger.info('EmbeddingServiceFactory: Falling back to default embedding service');
+        return new DefaultEmbeddingService();
+      }
+    }
+
+    if (embeddingProvider === 'openai') {
+      const openaiApiKey = process.env.OPENAI_API_KEY;
+      if (!openaiApiKey) {
+        logger.error(
+          'EmbeddingServiceFactory: EMBEDDING_PROVIDER is set to "openai" but OPENAI_API_KEY is missing'
+        );
+        logger.info('EmbeddingServiceFactory: Falling back to default embedding service');
+        return new DefaultEmbeddingService();
+      }
+    }
+
+    if (embeddingProvider === 'azure') {
+      const azureApiKey = process.env.AZURE_OPENAI_API_KEY;
+      const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+      const azureModel = process.env.AZURE_OPENAI_MODEL;
+      if (!azureApiKey || !azureEndpoint || !azureModel) {
+        logger.error(
+          'EmbeddingServiceFactory: EMBEDDING_PROVIDER is set to "azure" but Azure configuration is incomplete'
+        );
+        logger.info('EmbeddingServiceFactory: Falling back to default embedding service');
+        return new DefaultEmbeddingService();
+      }
+    }
+
+    // Auto-detect provider based on available configuration
     // Check for Azure OpenAI configuration first
     const azureApiKey = process.env.AZURE_OPENAI_API_KEY;
     const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT;
+    const azureModel = process.env.AZURE_OPENAI_MODEL;
     const azureApiVersion = process.env.AZURE_OPENAI_API_VERSION;
-    const azureModel = process.env.AZURE_OPENAI_MODEL || 'text-embedding-ada-002';
 
-    if (azureApiKey && azureEndpoint && azureDeployment) {
+    if (azureApiKey && azureEndpoint && azureModel) {
       try {
         logger.debug('EmbeddingServiceFactory: Creating Azure OpenAI embedding service', {
           endpoint: azureEndpoint,
-          deployment: azureDeployment,
-          apiVersion: azureApiVersion,
           model: azureModel,
+          apiVersion: azureApiVersion,
         });
         const service = new AzureEmbeddingService({
           apiKey: azureApiKey,
           endpoint: azureEndpoint,
-          deployment: azureDeployment,
-          apiVersion: azureApiVersion,
           model: azureModel,
+          apiVersion: azureApiVersion,
         });
         logger.info('EmbeddingServiceFactory: Azure OpenAI embedding service created successfully', {
           model: service.getModelInfo().name,
@@ -210,26 +252,23 @@ export class EmbeddingServiceFactory {
    *
    * @param apiKey - Azure OpenAI API key
    * @param endpoint - Azure OpenAI endpoint
-   * @param deployment - Azure OpenAI deployment name
+   * @param model - Azure OpenAI model/deployment name
    * @param apiVersion - Optional API version
-   * @param model - Optional model name
    * @param dimensions - Optional embedding dimensions
    * @returns Azure OpenAI embedding service
    */
   static createAzureService(
     apiKey: string,
     endpoint: string,
-    deployment: string,
+    model: string,
     apiVersion?: string,
-    model?: string,
     dimensions?: number
   ): EmbeddingService {
     return new AzureEmbeddingService({
       apiKey,
       endpoint,
-      deployment,
-      apiVersion,
       model,
+      apiVersion,
       dimensions,
     });
   }
@@ -271,16 +310,23 @@ EmbeddingServiceFactory.registerProvider('azure', (config = {}) => {
     throw new Error('Endpoint is required for Azure OpenAI embedding service');
   }
 
-  if (!config.deployment) {
-    throw new Error('Deployment name is required for Azure OpenAI embedding service');
+  if (!config.model) {
+    throw new Error('Model name is required for Azure OpenAI embedding service');
   }
 
   return new AzureEmbeddingService({
     apiKey: config.apiKey,
     endpoint: config.endpoint,
-    deployment: config.deployment,
-    apiVersion: config.apiVersion,
     model: config.model,
+    apiVersion: config.apiVersion,
     dimensions: config.dimensions,
+  });
+});
+
+EmbeddingServiceFactory.registerProvider('ollama', (config = {}) => {
+  return new OllamaEmbeddingService({
+    host: config.host as string | undefined,
+    model: config.model as string | undefined,
+    dimensions: config.dimensions as number | undefined,
   });
 });
